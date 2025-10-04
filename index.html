@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Juego: Adivina el Número</title>
+  <style>
+    :root{ --bg: #0f172a; --card: #0b1220; --accent: #22c55e; --muted:#94a3b8; color-scheme: dark }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial;background:linear-gradient(180deg,#071024 0%,#0b1220 100%);color:#e6eef8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border:1px solid rgba(255,255,255,0.04);width:100%;max-width:720px;padding:28px;border-radius:14px;box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+    header{display:flex;gap:16px;align-items:center}
+    .logo{width:56px;height:56px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#60a5fa);display:flex;align-items:center;justify-content:center;font-weight:700}
+    h1{margin:0;font-size:20px}
+    p.lead{margin:6px 0 18px;color:var(--muted)}
+    .play-area{display:grid;grid-template-columns:1fr 220px;gap:18px}
+    .panel{background:rgba(255,255,255,0.02);padding:18px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
+    .big-number{font-size:48px;font-weight:800;letter-spacing:2px;text-align:center;padding:14px;border-radius:8px;background:linear-gradient(180deg,rgba(255,255,255,0.01),transparent);margin-bottom:12px}
+    input[type=number]{width:100%;padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.05);background:transparent;color:inherit;font-size:16px}
+    button{width:100%;padding:12px;border-radius:8px;border:none;background:var(--accent);color:#072018;font-weight:700;cursor:pointer}
+    .hint{color:var(--muted);font-size:14px;margin-top:8px;text-align:center}
+    .footer-row{display:flex;gap:8px}
+    .small{font-size:13px;color:var(--muted)}
+    .score{display:flex;gap:12px;align-items:center}
+    .pill{background:rgba(255,255,255,0.03);padding:8px 12px;border-radius:999px;border:1px solid rgba(255,255,255,0.02)}
+    @media (max-width:680px){.play-area{grid-template-columns:1fr;}.logo{display:none}}
+  </style>
+</head>
+<body>
+  <main class="card" role="main">
+    <header>
+      <div class="logo">JS</div>
+      <div>
+        <h1>Juego: Adivina el Número</h1>
+        <p class="lead">Piensa en un número entre 1 y 100. Tienes 10 intentos para encontrarlo. ¡Buena suerte!</p>
+      </div>
+    </header>
+
+    <section class="play-area" aria-labelledby="game">
+      <div class="panel" id="game">
+        <div class="big-number" id="status">¿Listo?</div>
+
+        <label class="small" for="guess">Tu intento</label>
+        <input id="guess" type="number" min="1" max="100" placeholder="Escribe un número..." />
+        <div style="height:12px"></div>
+        <div class="footer-row">
+          <button id="btnGuess">Comprobar</button>
+          <button id="btnReset" style="background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);width:auto;padding:12px 14px">Reiniciar</button>
+        </div>
+
+        <p class="hint" id="hint">Empieza escribiendo un número y presiona "Comprobar".</p>
+      </div>
+
+      <aside class="panel" aria-labelledby="stats">
+        <h2 id="stats">Estadísticas</h2>
+        <div style="height:12px"></div>
+        <div class="score">
+          <div class="pill">Intentos: <strong id="attempts">0</strong>/10</div>
+          <div class="pill">Mejor puntaje: <strong id="best">—</strong></div>
+        </div>
+
+        <div style="height:16px"></div>
+        <h3 class="small">Historial</h3>
+        <ul id="history" class="small" style="margin:8px 0 0;padding-left:18px;max-height:220px;overflow:auto"></ul>
+
+        <div style="height:14px"></div>
+        <p class="small">Consejo: usa pistas para acercarte al número (mayor / menor). El juego guarda tu mejor puntaje en este navegador.</p>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    (function(){
+      const maxTries = 10;
+      let secret = null;
+      let tries = 0;
+      const status = document.getElementById('status');
+      const guessInput = document.getElementById('guess');
+      const btnGuess = document.getElementById('btnGuess');
+      const btnReset = document.getElementById('btnReset');
+      const hint = document.getElementById('hint');
+      const attemptsEl = document.getElementById('attempts');
+      const historyEl = document.getElementById('history');
+      const bestEl = document.getElementById('best');
+
+      function newGame(){
+        secret = Math.floor(Math.random()*100)+1;
+        tries = 0;
+        status.textContent = 'Empieza a jugar!';
+        hint.textContent = 'Tienes ' + (maxTries - tries) + ' intentos restantes.';
+        attemptsEl.textContent = tries;
+        historyEl.innerHTML = '';
+        guessInput.value = '';
+        loadBest();
+      }
+
+      function loadBest(){
+        const best = localStorage.getItem('guess_best');
+        bestEl.textContent = best ? best : '—';
+      }
+
+      function saveBest(score){
+        const prev = localStorage.getItem('guess_best');
+        if(!prev || score < Number(prev)){
+          localStorage.setItem('guess_best', String(score));
+          loadBest();
+        }
+      }
+
+      function endGame(win){
+        btnGuess.disabled = true;
+        if(win){
+          status.textContent = '¡Acertaste! 🎉';
+        } else {
+          status.textContent = 'Se acabaron los intentos. El número era ' + secret;
+        }
+      }
+
+      btnGuess.addEventListener('click', ()=>{
+        const val = Number(guessInput.value);
+        if(!val || val<1 || val>100){
+          hint.textContent = 'Introduce un número válido entre 1 y 100.';return;
+        }
+        tries++;
+        attemptsEl.textContent = tries;
+        const li = document.createElement('li');
+
+        if(val === secret){
+          li.textContent = `Intento ${tries}: ${val} — ¡Correcto!`;
+          historyEl.prepend(li);
+          saveBest(tries);
+          endGame(true);
+          return;
+        }
+
+        const diff = Math.abs(secret - val);
+        let msg = '';
+        if(val < secret) msg = 'Demasiado bajo.';
+        else msg = 'Demasiado alto.';
+        if(diff <= 3) msg += ' 🔥 Estás muy cerca!';
+        else if(diff <= 10) msg += ' 🟡 Cerca.';
+        else msg += ' ❄️ Lejos.';
+
+        li.textContent = `Intento ${tries}: ${val} — ${msg}`;
+        historyEl.prepend(li);
+
+        if(tries >= maxTries){
+          endGame(false);
+        } else {
+          hint.textContent = msg + ' Te quedan ' + (maxTries - tries) + ' intentos.';
+        }
+      });
+
+      btnReset.addEventListener('click', ()=>{
+        btnGuess.disabled = false;
+        newGame();
+      });
+
+      // start
+      newGame();
+    })();
+  </script>
+</body>
+</html>
